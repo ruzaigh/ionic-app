@@ -17,5 +17,7 @@ export class OffersPage implements OnInit {
   ngOnInit() {
     this.offers = this.placesService.place;
   }
+  onLogOut(){
 
+  }
 }
