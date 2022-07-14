@@ -9,8 +9,9 @@ export class BookingService{
       'p1',
     'u1',
     'Constantia',
-      2
-
+      2,
+      new Date('2022-01-01'),
+      new Date('2022-12-31'),
     ),
     new Booking(
       'b2',
@@ -18,6 +19,8 @@ export class BookingService{
       'u2',
       'Plattekloof',
       1,
+      new Date('2022-01-01'),
+      new Date('2022-12-31'),
     ),
     new Booking(
       'b3',
@@ -25,6 +28,8 @@ export class BookingService{
       'u3',
       'Sea Point',
       3,
+      new Date('2022-01-01'),
+      new Date('2022-12-31'),
     )
   ];
 
