@@ -12,6 +12,8 @@ export class PlacesService {
       'on the beaches of Sea Point',
       'https://asrealty.co.za/wp-content/uploads/2021/03/20210223_145922000_iOS.jpg',
       149.99,
+      new Date('2022-01-01'),
+      new Date('2022-12-31'),
     ),
     new Place(
       'p2',
@@ -19,6 +21,8 @@ export class PlacesService {
       'The largest selection of private property and houses',
       'https://images.prop24.com/262618887/Crop600x400',
       1149.99,
+      new Date('2022-01-01'),
+      new Date('2022-12-31'),
     ),
     new Place(
       'p3',
@@ -26,6 +30,8 @@ export class PlacesService {
       'For Nice cenematic view',
       'https://images.prop24.com/282452257/Crop600x400',
       549.99,
+      new Date('2022-01-01'),
+      new Date('2022-12-31'),
     )
   ];
 
