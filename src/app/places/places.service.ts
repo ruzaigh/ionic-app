@@ -1,11 +1,14 @@
 import { Injectable } from '@angular/core';
 import { Place } from './place.model';
+import {AuthService} from '../auth/auth.service';
+import {BehaviorSubject} from 'rxjs';
+import {delay, map, take, tap} from 'rxjs/operators';
 
 @Injectable({
   providedIn: 'root'
 })
 export class PlacesService {
-  private places: Place[] = [
+  private places = new BehaviorSubject<Place[]>([
     new Place(
       'p1',
       'Sea Point',
@@ -14,6 +17,7 @@ export class PlacesService {
       149.99,
       new Date('2022-01-01'),
       new Date('2022-12-31'),
+      'abc'
     ),
     new Place(
       'p2',
@@ -23,6 +27,7 @@ export class PlacesService {
       1149.99,
       new Date('2022-01-01'),
       new Date('2022-12-31'),
+      'abc'
     ),
     new Place(
       'p3',
@@ -32,16 +37,67 @@ export class PlacesService {
       549.99,
       new Date('2022-01-01'),
       new Date('2022-12-31'),
+      'abc'
     )
-  ];
+  ]);
 
-  constructor() { }
+  constructor(private authService: AuthService) { }
 
   get place(){
-    return [...this.places];
+    return this.places.asObservable();
   }
 
   getPlace(id: string){
-  return {...this.place.find(p => p.id === id)};
+  return this.places.pipe(
+    take(1),
+    map(places =>({ ...places.find(p => p.id === id)}))
+    );
+  }
+
+  addPlace(
+    title: string,
+    description: string,
+    price: number,
+    dateFrom: Date,
+    dateTo: Date
+  ){
+    const newPlace = new Place(
+      Math.random().toString(),
+      title,
+      description,
+      'https://images.prop24.com/282452257/Crop600x400',
+      price,
+      dateFrom,
+      dateTo,
+      this.authService.userID,
+    );
+    return this.places
+      .pipe(take(1),
+      delay(1000),
+      tap(places =>{
+        this.places.next(places.concat(newPlace));
+      }));
+  }
+
+  updatePlace(placeId: string, title: string, description: string){
+    return this.places.pipe(
+      take(1),
+      delay(1000),
+      tap(places =>{
+        const updatedPlaces = [...places];
+        const oldPlaceIndex = updatedPlaces.findIndex(p => p.id === placeId);
+        const oldPlace = updatedPlaces[oldPlaceIndex];
+        updatedPlaces[oldPlaceIndex] = new Place(
+          oldPlace.id,
+          title,
+          description,
+          oldPlace.imageUrl,
+          oldPlace.price,
+          oldPlace.availableFrom,
+          oldPlace.availableTo,
+          oldPlace.userId
+        );
+        this.places.next(updatedPlaces);
+      }));
   }
 }
