@@ -10,7 +10,7 @@ import {NgForm} from "@angular/forms";
   styleUrls: ['./auth.page.scss'],
 })
 export class AuthPage implements OnInit {
-  isLogIn: boolean = false;
+  isLogIn = false;
   constructor(
     private authService: AuthService,
     private router: Router,

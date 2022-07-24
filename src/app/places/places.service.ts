@@ -1,58 +1,75 @@
 import { Injectable } from '@angular/core';
 import { Place } from './place.model';
 import {AuthService} from '../auth/auth.service';
-import {BehaviorSubject} from 'rxjs';
-import {delay, map, take, tap} from 'rxjs/operators';
+import {BehaviorSubject, of} from 'rxjs';
+import {delay, map, switchMap, take, tap} from 'rxjs/operators';
+import {HttpClient} from '@angular/common/http';
 
+interface PlaceData{
+  availableFrom: string;
+  availableTo: string;
+  description: string;
+  imageUrl: string;
+  price: number;
+  title: string;
+  userId: string;
+}
 @Injectable({
   providedIn: 'root'
 })
 export class PlacesService {
-  private places = new BehaviorSubject<Place[]>([
-    new Place(
-      'p1',
-      'Sea Point',
-      'on the beaches of Sea Point',
-      'https://asrealty.co.za/wp-content/uploads/2021/03/20210223_145922000_iOS.jpg',
-      149.99,
-      new Date('2022-01-01'),
-      new Date('2022-12-31'),
-      'abc'
-    ),
-    new Place(
-      'p2',
-      'Constantia ',
-      'The largest selection of private property and houses',
-      'https://images.prop24.com/262618887/Crop600x400',
-      1149.99,
-      new Date('2022-01-01'),
-      new Date('2022-12-31'),
-      'abc'
-    ),
-    new Place(
-      'p3',
-      'Plattekloof ',
-      'For Nice cenematic view',
-      'https://images.prop24.com/282452257/Crop600x400',
-      549.99,
-      new Date('2022-01-01'),
-      new Date('2022-12-31'),
-      'abc'
-    )
-  ]);
+  private places = new BehaviorSubject<Place[]>([]);
 
-  constructor(private authService: AuthService) { }
+  constructor(private authService: AuthService, private http: HttpClient) { }
 
   get place(){
     return this.places.asObservable();
   }
+  fetchPlaces(){
+    return this.http.get<{[key: string]: PlaceData}>('https://airbnb-f3c71-default-rtdb.firebaseio.com/offered-places.json')
+    .pipe(map(resData =>{
+      const places = [];
+      for (const key in resData){
+        if (resData.hasOwnProperty(key)){
+          places.push(new Place(
+            key,
+            resData[key].title,
+            resData[key].description,
+            resData[key].imageUrl,
+            resData[key].price,
+            new Date(resData[key].availableFrom),
+            new Date(resData[key].availableTo),
+            resData[key].userId
+          ));
+        }
+      }
+      //if we have data
+      return places;
+      // testing if we do not have data
+      // return [];
+    }),
+    tap(places => {
+      this.places.next(places);
+    }));
+  }
 
   getPlace(id: string){
-  return this.places.pipe(
-    take(1),
-    map(places =>({ ...places.find(p => p.id === id)}))
-    );
-  }
+  return this.http.get<PlaceData>(
+    `https://airbnb-f3c71-default-rtdb.firebaseio.com/offered-places/${id}.json`
+  ).pipe(
+    map(placeData => new Place(
+        id,
+        placeData.title,
+        placeData.description,
+        placeData.imageUrl,
+        placeData.price,
+        new Date(placeData.availableFrom),
+        new Date(placeData.availableTo),
+        placeData.userId
+      ))
+  );
+ }
+
 
   addPlace(
     title: string,
@@ -61,6 +78,7 @@ export class PlacesService {
     dateFrom: Date,
     dateTo: Date
   ){
+    let generatedId: string;
     const newPlace = new Place(
       Math.random().toString(),
       title,
@@ -71,23 +89,41 @@ export class PlacesService {
       dateTo,
       this.authService.userID,
     );
-    return this.places
-      .pipe(take(1),
-      delay(1000),
-      tap(places =>{
-        this.places.next(places.concat(newPlace));
-      }));
+    //after the ".com/" is what firebase need to store our data in so it could be named anything
+    return this.http
+      .post<{name: string}>('https://airbnb-f3c71-default-rtdb.firebaseio.com/offered-places.json', {
+      ...newPlace
+      ,id: null}).pipe(
+       switchMap(resData =>{
+         generatedId = resData.name;
+         return this.places ;
+       }),
+        take(1),
+        tap(places => {
+          newPlace.id = generatedId;
+          this.places.next(places.concat(newPlace));
+        })
+    );
   }
 
   updatePlace(placeId: string, title: string, description: string){
+    let updatedPlaces: Place[];
     return this.places.pipe(
       take(1),
-      delay(1000),
-      tap(places =>{
-        const updatedPlaces = [...places];
-        const oldPlaceIndex = updatedPlaces.findIndex(p => p.id === placeId);
-        const oldPlace = updatedPlaces[oldPlaceIndex];
-        updatedPlaces[oldPlaceIndex] = new Place(
+      switchMap(places => {
+        if(!places || places.length <= 0){
+          // if we don't have data
+          return this.fetchPlaces();
+        }else{
+          //if we had something from the start( then kinda useless to have )
+          return of(places);
+        }
+      }),
+      switchMap(places => {
+        const updatedPlaceIndex = places.findIndex(pl => pl.id === placeId);
+        updatedPlaces = [...places];
+        const oldPlace = updatedPlaces[updatedPlaceIndex];
+        updatedPlaces[updatedPlaceIndex] = new Place(
           oldPlace.id,
           title,
           description,
@@ -97,7 +133,13 @@ export class PlacesService {
           oldPlace.availableTo,
           oldPlace.userId
         );
+        return this.http.put(`https://airbnb-f3c71-default-rtdb.firebaseio.com/offered-places/${placeId}.json`,
+          {...updatedPlaces[updatedPlaceIndex], id: null}
+        );
+      }),
+      tap(() => {
         this.places.next(updatedPlaces);
-      }));
+      })
+    );
   }
 }

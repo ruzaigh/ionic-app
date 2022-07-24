@@ -1,6 +1,6 @@
 import {Component, OnDestroy, OnInit} from '@angular/core';
-import {LoadingController, NavController} from "@ionic/angular";
-import {ActivatedRoute} from "@angular/router";
+import {AlertController, LoadingController, NavController} from "@ionic/angular";
+import {ActivatedRoute, Router} from "@angular/router";
 import {PlacesService} from "../../places.service";
 import {Place} from "../../place.model";
 import {FormControl, FormGroup, Validators} from "@angular/forms";
@@ -14,12 +14,16 @@ import {Subscription} from "rxjs";
 export class EditOfferPage implements OnInit, OnDestroy {
   place: Place;
   form: FormGroup;
+  placeID: string;
+  isLoading: boolean;
   private placesSub: Subscription;
   constructor(
     private router: ActivatedRoute,
     private navCrtl: NavController,
     private placesService: PlacesService,
-    private loadingCtrl: LoadingController
+    private loadingCtrl: LoadingController,
+    private alertCtrl: AlertController,
+    private rout: Router
   ) { }
 
   ngOnInit() {
@@ -29,7 +33,11 @@ export class EditOfferPage implements OnInit, OnDestroy {
         this.navCrtl.navigateBack('/places/tabs/offers');
         return;
       }
-      this.placesSub = this.placesService.getPlace(paramMap.get('placeId')).subscribe(place => {
+      this.placeID = paramMap.get('placeId');
+      this.isLoading = true;
+      this.placesSub = this.placesService.getPlace(paramMap
+        .get('placeId'))
+        .subscribe(place => {
           this.place = place;
           this.form = new FormGroup({
             title: new FormControl(this.place.title, {
@@ -41,7 +49,19 @@ export class EditOfferPage implements OnInit, OnDestroy {
               validators: [Validators.required, Validators.maxLength(180)]
             })
           });
-       });
+          this.isLoading = false;
+       },error => {
+          //if we have an error
+          this.alertCtrl.create({
+            header: 'An error occurred!',
+            message: 'Place could not be fetched. Please try again later.',
+            buttons: [{text: 'Okay', handler: () => {
+              this.rout.navigate(['/places/tabs/offers']);
+            }}]
+          }).then(alertEl => {
+            alertEl.present();
+          });
+        });
     });
   }
 
